@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use anchor_lang::prelude::*; // usamos Anchor para Solana
 
 declare_id!("F4gRcYvLs2MBCsJ1yGaokFicYBNj59W1KiuDLXuwLu3L");
 
@@ -6,93 +6,145 @@ declare_id!("F4gRcYvLs2MBCsJ1yGaokFicYBNj59W1KiuDLXuwLu3L");
 pub mod modulo {
     use super::*;
 
+    // ==========================
     // CREAR DATABASE
+    // ==========================
     pub fn crear_database(
-        ctx: Context<CrearVideoJuegoDB>,
+        context: Context<CrearVideoJuegoDB>,
         nombre_db: String,
     ) -> Result<()> {
-        let db = &mut ctx.accounts.videojuego_db;
 
-        require!(nombre_db.len() <= 30, ErrorCode::NombreMuyLargo);
+        let owner = context.accounts.usuario.key(); // dueño de la DB
+        let juegos: Vec<Videojuego> = Vec::new(); // vector vacío
 
-        db.owner = ctx.accounts.usuario.key();
-        db.nombre_db = nombre_db;
-        db.juegos = Vec::new();
+        context.accounts.videojuego_db.set_inner(VideojuegoDB {
+            owner,
+            nombre_db,
+            juegos,
+        });
+
+        msg!("Database creada correctamente");
 
         Ok(())
     }
 
     // ==========================
-    // CREATE -> AGREGAR JUEGO
+    // CREATE -> AGREGAR VIDEOJUEGO
     // ==========================
     pub fn agregar_videojuego(
-        ctx: Context<CrearJuego>,
-        juego_nombre: String,
+        context: Context<NuevoVideojuego>,
+        nombre: String,
         genero: String,
         estudio: String,
         dificultad: u8,
         calificacion: u8,
     ) -> Result<()> {
 
-        let videojuego_db = &mut ctx.accounts.videojuego_db;
-        let juego = &mut ctx.accounts.juego;
+        // validamos owner
+        require!(
+            context.accounts.videojuego_db.owner == context.accounts.usuario.key(),
+            ErrorCode::NoEresOwner
+        );
 
-        require!(juego_nombre.len() <= 30, ErrorCode::NombreMuyLargo);
-        require!(genero.len() <= 30, ErrorCode::NombreMuyLargo);
-        require!(estudio.len() <= 30, ErrorCode::NombreMuyLargo);
+        let videojuego = Videojuego {
+            nombre,
+            genero,
+            estudio,
+            dificultad,
+            calificacion,
+            disponible: true,
+        };
 
-        juego.nombre = juego_nombre;
-        juego.genero = genero;
-        juego.estudio = estudio;
-        juego.dificultad = dificultad;
-        juego.calificacion = calificacion;
+        // agregamos al vector
+        context.accounts.videojuego_db.juegos.push(videojuego);
 
-        videojuego_db.juegos.push(juego.key());
+        msg!("Videojuego agregado correctamente");
 
         Ok(())
     }
 
     // ==========================
-    // UPDATE -> ACTUALIZAR JUEGO
+    // READ -> VER VIDEOJUEGOS
     // ==========================
-    pub fn actualizar_videojuego(
-        ctx: Context<ActualizarJuego>,
-        nuevo_nombre: String,
-        nuevo_genero: String,
-        nuevo_estudio: String,
-        nueva_dificultad: u8,
-        nueva_calificacion: u8,
+    pub fn ver_videojuegos(
+        context: Context<NuevoVideojuego>,
     ) -> Result<()> {
 
-        let juego = &mut ctx.accounts.juego;
+        require!(
+            context.accounts.videojuego_db.owner == context.accounts.usuario.key(),
+            ErrorCode::NoEresOwner
+        );
 
-        require!(nuevo_nombre.len() <= 30, ErrorCode::NombreMuyLargo);
-        require!(nuevo_genero.len() <= 30, ErrorCode::NombreMuyLargo);
-        require!(nuevo_estudio.len() <= 30, ErrorCode::NombreMuyLargo);
-
-        juego.nombre = nuevo_nombre;
-        juego.genero = nuevo_genero;
-        juego.estudio = nuevo_estudio;
-        juego.dificultad = nueva_dificultad;
-        juego.calificacion = nueva_calificacion;
+        msg!(
+            "Lista de videojuegos: {:#?}",
+            context.accounts.videojuego_db.juegos
+        );
 
         Ok(())
     }
 
     // ==========================
-    // DELETE -> ELIMINAR JUEGO
+    // DELETE -> ELIMINAR VIDEOJUEGO
     // ==========================
     pub fn eliminar_videojuego(
-        ctx: Context<EliminarJuego>,
+        context: Context<NuevoVideojuego>,
+        nombre: String,
     ) -> Result<()> {
 
-        let videojuego_db = &mut ctx.accounts.videojuego_db;
-        let juego_key = ctx.accounts.juego.key();
+        require!(
+            context.accounts.videojuego_db.owner == context.accounts.usuario.key(),
+            ErrorCode::NoEresOwner
+        );
 
-        // elimina la pubkey del vector
-        videojuego_db.juegos.retain(|&x| x != juego_key);
+        let juegos = &mut context.accounts.videojuego_db.juegos;
 
-        Ok(())
+        for i in 0..juegos.len() {
+            if juegos[i].nombre == nombre {
+                juegos.remove(i);
+
+                msg!("Videojuego {} eliminado", nombre);
+
+                return Ok(());
+            }
+        }
+
+        Err(ErrorCode::JuegoNoExiste.into())
+    }
+
+    // ==========================
+    // UPDATE -> MODIFICAR DISPONIBILIDAD
+    // ==========================
+    pub fn alternar_estado(
+        context: Context<NuevoVideojuego>,
+        nombre: String,
+    ) -> Result<()> {
+
+        require!(
+            context.accounts.videojuego_db.owner == context.accounts.usuario.key(),
+            ErrorCode::NoEresOwner
+        );
+
+        let juegos = &mut context.accounts.videojuego_db.juegos;
+
+        for i in 0..juegos.len() {
+            if juegos[i].nombre == nombre {
+
+                let estado_actual = juegos[i].disponible;
+                let nuevo_estado = !estado_actual;
+
+                juegos[i].disponible = nuevo_estado;
+
+                msg!(
+                    "El videojuego {} ahora esta {}",
+                    nombre,
+                    nuevo_estado
+                );
+
+                return Ok(());
+            }
+        }
+
+        Err(ErrorCode::JuegoNoExiste.into())
     }
 }
 
@@ -101,31 +153,38 @@ pub mod modulo {
 // ==========================
 #[error_code]
 pub enum ErrorCode {
-    #[msg("El nombre es demasiado largo.")]
+    #[msg("No eres dueño de esta database")]
+    NoEresOwner,
+
+    #[msg("Nombre demasiado largo")]
     NombreMuyLargo,
+
+    #[msg("El videojuego no existe")]
+    JuegoNoExiste,
 }
 
 // ==========================
-// DATABASE
+// CUENTA DATABASE
 // ==========================
 #[account]
 #[derive(InitSpace)]
 pub struct VideojuegoDB {
-    pub owner: Pubkey,
+
+    pub owner: Pubkey, // dueño
 
     #[max_len(30)]
-    pub nombre_db: String,
+    pub nombre_db: String, // nombre DB
 
     #[max_len(50)]
-    pub juegos: Vec<Pubkey>,
+    pub juegos: Vec<Videojuego>, // vector de videojuegos
 }
 
 // ==========================
-// JUEGO
+// STRUCT VIDEOJUEGO
 // ==========================
-#[account]
-#[derive(InitSpace)]
-pub struct Juego {
+#[derive(InitSpace, AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Debug)]
+pub struct Videojuego {
+
     #[max_len(30)]
     pub nombre: String,
 
@@ -136,7 +195,10 @@ pub struct Juego {
     pub estudio: String,
 
     pub dificultad: u8,
+
     pub calificacion: u8,
+
+    pub disponible: bool,
 }
 
 // ==========================
@@ -144,76 +206,36 @@ pub struct Juego {
 // ==========================
 #[derive(Accounts)]
 pub struct CrearVideoJuegoDB<'info> {
+
+    #[account(mut)]
+    pub usuario: Signer<'info>,
+
     #[account(
         init,
+        // crea cuenta nueva
         payer = usuario,
-        space = 8 + VideojuegoDB::INIT_SPACE,
+        // usuario paga renta
+        space = VideojuegoDB::INIT_SPACE + 8,
+        // espacio reservado
         seeds = [b"database", usuario.key().as_ref()],
+        // crea PDA
         bump
-    )]
+         // número automático PDA    )]
     pub videojuego_db: Account<'info, VideojuegoDB>,
-
-    #[account(mut)]
-    pub usuario: Signer<'info>,
+    // cuenta database
 
     pub system_program: Program<'info, System>,
+    // programa sistema Solana
 }
 
 // ==========================
-// CREAR JUEGO
+// CONTEXTO VIDEOJUEGO
 // ==========================
 #[derive(Accounts)]
-#[instruction(juego_nombre:String)]
-pub struct CrearJuego<'info> {
+pub struct NuevoVideojuego<'info> {
+
+    pub usuario: Signer<'info>,
 
     #[account(mut)]
     pub videojuego_db: Account<'info, VideojuegoDB>,
-
-    #[account(
-        init,
-        payer = usuario,
-        space = 8 + Juego::INIT_SPACE,
-        seeds = [b"juego", usuario.key().as_ref(), juego_nombre.as_bytes()],
-        bump
-    )]
-    pub juego: Account<'info, Juego>,
-
-    #[account(mut)]
-    pub usuario: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-// ==========================
-// ACTUALIZAR JUEGO
-// ==========================
-#[derive(Accounts)]
-pub struct ActualizarJuego<'info> {
-
-    #[account(mut)]
-    pub videojuego_db: Account<'info, VideojuegoDB>,
-
-    #[account(mut)]
-    pub juego: Account<'info, Juego>,
-
-    pub usuario: Signer<'info>,
-}
-
-// ==========================
-// ELIMINAR JUEGO
-// ==========================
-#[derive(Accounts)]
-pub struct EliminarJuego<'info> {
-
-    #[account(mut)]
-    pub videojuego_db: Account<'info, VideojuegoDB>,
-
-    #[account(
-        mut,
-        close = usuario
-    )]
-    pub juego: Account<'info, Juego>,
-
-    #[account(mut)]
-    pub usuario: Signer<'info>,
 }
