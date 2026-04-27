@@ -220,7 +220,8 @@ pub struct CrearVideoJuegoDB<'info> {
         seeds = [b"database", usuario.key().as_ref()],
         // crea PDA
         bump
-         // número automático PDA    )]
+         // número automático PDA    
+         )]
     pub videojuego_db: Account<'info, VideojuegoDB>,
     // cuenta database
 
@@ -239,3 +240,189 @@ pub struct NuevoVideojuego<'info> {
     #[account(mut)]
     pub videojuego_db: Account<'info, VideojuegoDB>,
 }
+
+
+/*
+# Explicación
+
+Este proyecto consiste en una base de datos de videojuegos desarrollada con Anchor y Solana.
+
+El programa permite realizar operaciones CRUD (Create, Read, Update y Delete) sobre una colección de videojuegos.
+
+CRUD significa:
+
+- Create → Crear datos
+- Read → Leer datos
+- Update → Actualizar datos
+- Delete → Eliminar datos
+
+El proyecto funciona mediante una cuenta PDA (Program Derived Address), que permite guardar información en blockchain de manera segura y única para cada usuario.
+
+
+
+FUNCIONAMIENTO DEL PROGRAMA
+
+1. Crear Database
+
+La función crear_database() crea una base de datos para almacenar videojuegos.
+
+Qué hace:
+
+. uarda el owner (dueño de la database).
+. Guarda el nombre de la base de datos.
+. Inicializa un vector vacío de videojuegos.
+
+Ejemplo:
+
+crear_database("Mis Juegos")
+
+Resultado:
+
+Se crea una cuenta PDA que almacenará todos los videojuegos.
+
+
+2. Agregar Videojuego
+
+La función agregar_videojuego() permite agregar videojuegos al vector.
+
+Datos que recibe:
+
+- Nombre
+- Género
+- Estudio
+- Dificultad
+- Calificación
+
+Ejemplo:
+
+agregar_videojuego(
+    "Halo",
+    "Shooter",
+    "Bungie",
+    8,
+    10
+)
+
+Resultado:
+
+El videojuego se guarda dentro del vector de videojuegos.
+
+
+3. Ver Videojuegos
+
+La función ver_videojuegos() muestra todos los videojuegos almacenados.
+
+Usa msg!() para imprimir datos dentro de los logs de Solana.
+
+Ejemplo:
+
+ver_videojuegos()
+
+Resultado:
+
+Se imprime la lista completa de videojuegos.
+
+
+4. Eliminar Videojuego
+
+La función eliminar_videojuego() busca un videojuego por nombre.
+
+Si existe:
+
+- Lo elimina del vector.
+- Muestra mensaje de éxito.
+
+Ejemplo:
+
+eliminar_videojuego("Halo")
+
+Resultado:
+
+El videojuego desaparece de la database.
+
+
+5. Cambiar Estado
+
+La función alternar_estado() cambia el estado de disponibilidad.
+
+Ejemplo:
+
+true → false
+false → true
+
+Esto permite marcar si un videojuego está disponible.
+
+
+ESTRUCTURAS DEL PROGRAMA
+
+1. VideojuegoDB
+
+Representa la cuenta principal.
+
+Contiene:
+
+. Owner
+. Nombre de la database
+. Lista de videojuegos
+
+2. Videojuego
+
+Representa cada videojuego individual.
+
+Contiene:
+
+- Nombre
+- Género
+- Estudio
+- Dificultad
+- Calificación
+- Disponible
+
+
+SEGURIDAD
+
+El programa usa require!() para validar permisos.
+
+Esto asegura que solamente el dueño pueda modificar la database.
+
+Ejemplo:
+
+require!(
+    context.accounts.videojuego_db.owner == context.accounts.usuario.key(),
+    ErrorCode::NoEresOwner
+);
+
+
+
+USO DE PDA
+
+La PDA se crea con:
+
+seeds = [b"database", usuario.key().as_ref()]
+
+Esto genera una dirección única para cada usuario.
+
+Beneficios:
+
+. Seguridad
+. No requiere private key
+.  Cada usuario tiene su propia database
+
+
+
+CONCLUSIÓN
+
+Este proyecto implementa un CRUD completo usando Anchor y Solana.
+
+Permite administrar videojuegos como una biblioteca digital dentro de blockchain.
+
+El programa demuestra:
+
+- Uso de PDA
+- Uso de cuentas Anchor
+- Validación de permisos
+- Uso de vectores
+- Persistencia de datos en Solana
+
+Esto convierte el proyecto en una base de datos descentralizada de videojuegos.
+*/
